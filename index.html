@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>放送通訳トレーナー / Broadcast Interpreter Trainer</title>
+<style>
+  :root {
+    --bg: #0b1320;
+    --panel: #131e30;
+    --panel2: #1a2740;
+    --line: #243450;
+    --text: #e9eef7;
+    --sub: #9aa8be;
+    --accent: #e60012;
+    --accent2: #4ea8ff;
+    --ok: #3ddc97;
+    --ng: #ff6b6b;
+    --warn: #ffb454;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+    background: radial-gradient(1200px 700px at 80% -10%, #1b2c4a 0%, var(--bg) 60%);
+    color: var(--text);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+  .app {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 28px 20px 60px;
+  }
+  header.bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding-bottom: 18px; border-bottom: 1px solid var(--line); margin-bottom: 24px;
+  }
+  .brand {
+    display: flex; align-items: center; gap: 12px;
+  }
+  .brand .logo {
+    width: 36px; height: 36px; border-radius: 6px;
+    background: linear-gradient(135deg, var(--accent) 0%, #ff5e6c 100%);
+    display: grid; place-items: center; font-weight: 900; color: white; letter-spacing: -1px;
+    box-shadow: 0 6px 18px rgba(230,0,18,.35);
+  }
+  .brand h1 {
+    font-size: 16px; margin: 0; font-weight: 700; letter-spacing: .02em;
+  }
+  .brand .sub { color: var(--sub); font-size: 12px; margin-top: 2px; }
+  .stats {
+    display: flex; gap: 14px; align-items: center;
+  }
+  .stat { text-align: right; }
+  .stat .v { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .stat .l { font-size: 10px; color: var(--sub); text-transform: uppercase; letter-spacing: .12em; }
+
+  /* Home */
+  .hero {
+    padding: 6px 4px 22px;
+  }
+  .hero h2 { font-size: 26px; margin: 0 0 6px; letter-spacing: -.01em; }
+  .hero p { color: var(--sub); margin: 0; font-size: 14px; line-height: 1.7; }
+
+  .grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px;
+    margin-top: 22px;
+  }
+  .card {
+    background: linear-gradient(180deg, var(--panel) 0%, var(--panel2) 100%);
+    border: 1px solid var(--line); border-radius: 14px; padding: 18px;
+    cursor: pointer; transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+    position: relative; overflow: hidden;
+  }
+  .card:hover { transform: translateY(-2px); border-color: var(--accent2); box-shadow: 0 12px 32px rgba(0,0,0,.35); }
+  .card .ic { font-size: 22px; margin-bottom: 8px; }
+  .card h3 { margin: 0 0 4px; font-size: 16px; }
+  .card p { margin: 0; color: var(--sub); font-size: 12.5px; line-height: 1.6; }
+  .card .tag {
+    position: absolute; top: 14px; right: 14px;
+    font-size: 10px; padding: 3px 8px; border-radius: 999px;
+    background: rgba(78,168,255,.1); color: var(--accent2); border: 1px solid rgba(78,168,255,.25);
+    letter-spacing: .08em; text-transform: uppercase;
+  }
+
+  .options-row {
+    display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
+    margin-top: 22px; padding: 14px 16px; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+  .options-row label { font-size: 13px; color: var(--sub); display: flex; align-items: center; gap: 8px; }
+  .options-row select, .options-row input[type="checkbox"] {
+    accent-color: var(--accent2);
+  }
+  .options-row select {
+    background: var(--panel2); color: var(--text); border: 1px solid var(--line);
+    padding: 6px 10px; border-radius: 6px; font-size: 13px;
+  }
+
+  /* Quiz */
+  .quiz {
+    background: linear-gradient(180deg, var(--panel) 0%, var(--panel2) 100%);
+    border: 1px solid var(--line); border-radius: 16px; padding: 26px;
+    box-shadow: 0 24px 60px rgba(0,0,0,.35);
+  }
+  .qhead {
+    display: flex; justify-content: space-between; align-items: center;
+    color: var(--sub); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 14px;
+  }
+  .progress {
+    height: 4px; background: rgba(255,255,255,.06); border-radius: 999px; overflow: hidden; margin-bottom: 18px;
+  }
+  .progress > div { height: 100%; background: linear-gradient(90deg, var(--accent) 0%, var(--accent2) 100%); width: 0%; transition: width .3s ease; }
+  .timer-bar {
+    height: 3px; background: rgba(255,255,255,.06); border-radius: 999px; overflow: hidden; margin-bottom: 22px;
+  }
+  .timer-bar > div { height: 100%; background: var(--warn); width: 100%; transition: width .1s linear; }
+  .timer-bar.danger > div { background: var(--ng); }
+
+  .qprompt {
+    font-size: 26px; font-weight: 600; line-height: 1.5; margin: 8px 0 6px;
+  }
+  .qhint { font-size: 13px; color: var(--sub); margin-bottom: 22px; }
+  .qhint .topic { display: inline-block; padding: 2px 8px; border-radius: 4px; background: rgba(78,168,255,.1); color: var(--accent2); font-size: 11px; margin-right: 8px; }
+
+  .opts { display: grid; gap: 10px; }
+  .opt {
+    background: var(--panel2); border: 1px solid var(--line); border-radius: 10px;
+    padding: 14px 16px; text-align: left; color: var(--text); font-size: 15px; cursor: pointer;
+    transition: all .12s ease; font-family: inherit; line-height: 1.5;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .opt:hover { border-color: var(--accent2); background: #1f2d49; }
+  .opt:disabled { cursor: default; }
+  .opt .key {
+    width: 24px; height: 24px; border-radius: 4px; background: rgba(255,255,255,.06);
+    display: grid; place-items: center; font-size: 12px; color: var(--sub); flex-shrink: 0;
+  }
+  .opt.correct { background: rgba(61,220,151,.12); border-color: var(--ok); }
+  .opt.correct .key { background: var(--ok); color: #0b1320; }
+  .opt.wrong { background: rgba(255,107,107,.12); border-color: var(--ng); }
+  .opt.wrong .key { background: var(--ng); color: white; }
+
+  .feedback {
+    margin-top: 18px; padding: 14px 16px; border-radius: 10px;
+    background: rgba(255,255,255,.03); border: 1px solid var(--line); font-size: 14px; line-height: 1.7;
+  }
+  .feedback.ok { background: rgba(61,220,151,.06); border-color: rgba(61,220,151,.3); }
+  .feedback.ng { background: rgba(255,107,107,.06); border-color: rgba(255,107,107,.3); }
+  .feedback .ex { color: var(--sub); font-size: 13px; margin-top: 6px; }
+
+  .qfooter {
+    margin-top: 20px; display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  }
+  button.btn {
+    background: var(--accent2); color: #0b1320; border: 0; border-radius: 8px;
+    padding: 10px 18px; font-size: 14px; font-weight: 700; cursor: pointer;
+    font-family: inherit;
+  }
+  button.btn:hover { background: #6db8ff; }
+  button.btn.ghost { background: transparent; color: var(--sub); border: 1px solid var(--line); }
+  button.btn.ghost:hover { color: var(--text); border-color: var(--accent2); }
+  button.btn.icon { background: transparent; color: var(--sub); border: 1px solid var(--line); padding: 8px 12px; }
+  button.btn.icon:hover { color: var(--accent2); border-color: var(--accent2); }
+
+  /* Results */
+  .result {
+    background: linear-gradient(180deg, var(--panel) 0%, var(--panel2) 100%);
+    border: 1px solid var(--line); border-radius: 16px; padding: 32px; text-align: center;
+  }
+  .result h2 { margin: 0 0 8px; font-size: 24px; }
+  .result .score { font-size: 64px; font-weight: 800; margin: 18px 0 8px; letter-spacing: -.02em; }
+  .result .breakdown {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 24px 0;
+  }
+  .result .b {
+    background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 14px;
+  }
+  .result .b .v { font-size: 22px; font-weight: 700; }
+  .result .b .l { font-size: 11px; color: var(--sub); text-transform: uppercase; letter-spacing: .1em; }
+  .result .actions { display: flex; gap: 10px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
+  .result .review {
+    margin-top: 28px; text-align: left; max-height: 320px; overflow-y: auto;
+    background: rgba(0,0,0,.2); border-radius: 10px; padding: 14px 16px; border: 1px solid var(--line);
+  }
+  .result .review h4 { margin: 0 0 10px; font-size: 13px; color: var(--sub); text-transform: uppercase; letter-spacing: .1em; }
+  .result .review .item { padding: 8px 0; border-bottom: 1px dashed var(--line); font-size: 13px; }
+  .result .review .item:last-child { border-bottom: 0; }
+  .result .review .item .q { color: var(--text); }
+  .result .review .item .a { color: var(--sub); margin-top: 2px; }
+  .result .review .item.ng .q::before { content: "✗ "; color: var(--ng); font-weight: 700; }
+  .result .review .item.ok .q::before { content: "✓ "; color: var(--ok); font-weight: 700; }
+
+  .speak-btn {
+    background: transparent; border: 1px solid var(--line); color: var(--sub);
+    border-radius: 50%; width: 32px; height: 32px; display: inline-grid; place-items: center;
+    cursor: pointer; vertical-align: middle; margin-left: 8px;
+  }
+  .speak-btn:hover { color: var(--accent2); border-color: var(--accent2); }
+  .streak-flame { color: var(--warn); }
+
+  @media (max-width: 600px) {
+    .qprompt { font-size: 20px; }
+    .result .breakdown { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="bar">
+    <div class="brand">
+      <div class="logo">放</div>
+      <div>
+        <h1>放送通訳トレーナー</h1>
+        <div class="sub">Broadcast Interpreter Trainer · NHK level</div>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="v" id="stHigh">0</div><div class="l">High Score</div></div>
+      <div class="stat"><div class="v" id="stStreak">0<span class="streak-flame" id="streakFlame"></span></div><div class="l">Best Streak</div></div>
+    </div>
+  </header>
+
+  <main id="screen"></main>
+</div>
+
+<script>
+/* ============================================================================
+   DATA
+============================================================================ */
+
+const VOCAB = [
+  { en: "ceasefire", ja: "停戦", topic: "politics", ex: "Both sides agreed to a temporary ceasefire." },
+  { en: "sanctions", ja: "制裁", topic: "politics", ex: "The EU imposed fresh sanctions on the regime." },
+  { en: "bilateral", ja: "二国間の", topic: "politics", ex: "They held bilateral trade talks in Tokyo." },
+  { en: "unprecedented", ja: "前例のない", topic: "general", ex: "The flood was unprecedented in scale." },
+  { en: "austerity", ja: "緊縮財政", topic: "economy", ex: "The government rolled out austerity measures." },
+  { en: "mitigate", ja: "緩和する", topic: "general", ex: "Steps to mitigate climate change." },
+  { en: "ramifications", ja: "影響・余波", topic: "general", ex: "The ruling has wide ramifications." },
+  { en: "incumbent", ja: "現職の", topic: "politics", ex: "The incumbent president lost narrowly." },
+  { en: "stipulate", ja: "規定する", topic: "legal", ex: "The contract stipulates a 30-day notice." },
+  { en: "tantamount", ja: "～に等しい", topic: "legal", ex: "Silence is tantamount to consent." },
+  { en: "overhaul", ja: "全面見直し", topic: "general", ex: "A complete overhaul of the tax system." },
+  { en: "watershed", ja: "転換点・分水嶺", topic: "general", ex: "A watershed moment for the industry." },
+  { en: "contentious", ja: "議論を呼ぶ", topic: "politics", ex: "A contentious bill passed the lower house." },
+  { en: "exacerbate", ja: "悪化させる", topic: "general", ex: "Drought has exacerbated food shortages." },
+  { en: "repercussions", ja: "影響・反響", topic: "general", ex: "The decision had global repercussions." },
+  { en: "precedent", ja: "前例", topic: "legal", ex: "It sets a dangerous precedent." },
+  { en: "moratorium", ja: "一時停止", topic: "legal", ex: "A moratorium on executions." },
+  { en: "referendum", ja: "国民投票", topic: "politics", ex: "A national referendum will be held." },
+  { en: "coalition", ja: "連立・連合", topic: "politics", ex: "The coalition government collapsed." },
+  { en: "abstain", ja: "棄権する", topic: "politics", ex: "Five members abstained from the vote." },
+  { en: "indictment", ja: "起訴", topic: "legal", ex: "He faces a federal indictment." },
+  { en: "subpoena", ja: "召喚状", topic: "legal", ex: "A subpoena was issued to the witness." },
+  { en: "ratify", ja: "批准する", topic: "politics", ex: "Parliament ratified the treaty." },
+  { en: "tariff", ja: "関税", topic: "economy", ex: "New tariffs on imported steel." },
+  { en: "subsidy", ja: "補助金", topic: "economy", ex: "Farm subsidies were cut by 10%." },
+  { en: "deficit", ja: "赤字", topic: "economy", ex: "The trade deficit widened." },
+  { en: "surplus", ja: "黒字・余剰", topic: "economy", ex: "A record budget surplus." },
+  { en: "recession", ja: "景気後退", topic: "economy", ex: "The economy slipped into recession." },
+  { en: "inflation", ja: "インフレ", topic: "economy", ex: "Core inflation hit a 40-year high." },
+  { en: "monetary easing", ja: "金融緩和", topic: "economy", ex: "The BOJ continued monetary easing." },
+  { en: "fiscal stimulus", ja: "財政出動", topic: "economy", ex: "A massive fiscal stimulus package." },
+  { en: "yield curve", ja: "利回り曲線", topic: "economy", ex: "The yield curve inverted again." },
+  { en: "emissions", ja: "排出量", topic: "climate", ex: "Cutting carbon emissions by half." },
+  { en: "carbon neutrality", ja: "カーボンニュートラル", topic: "climate", ex: "Aiming for carbon neutrality by 2050." },
+  { en: "renewable energy", ja: "再生可能エネルギー", topic: "climate", ex: "Investments in renewable energy soared." },
+  { en: "wildfire", ja: "山火事", topic: "climate", ex: "Wildfires ravaged the coast." },
+  { en: "drought", ja: "干ばつ", topic: "climate", ex: "A prolonged drought hit the region." },
+  { en: "evacuation order", ja: "避難命令", topic: "disaster", ex: "An evacuation order was issued." },
+  { en: "magnitude", ja: "マグニチュード・規模", topic: "disaster", ex: "A magnitude 7.4 earthquake struck." },
+  { en: "casualties", ja: "死傷者", topic: "disaster", ex: "Heavy casualties reported in the south." },
+  { en: "humanitarian aid", ja: "人道支援", topic: "international", ex: "Humanitarian aid is reaching the camps." },
+  { en: "refugee", ja: "難民", topic: "international", ex: "Refugees crossed the border in droves." },
+  { en: "asylum seeker", ja: "亡命希望者", topic: "international", ex: "Asylum seekers face long delays." },
+  { en: "geopolitical", ja: "地政学的な", topic: "international", ex: "Rising geopolitical tensions." },
+  { en: "incursion", ja: "侵入・越境", topic: "international", ex: "An armed incursion across the border." },
+  { en: "cyberattack", ja: "サイバー攻撃", topic: "tech", ex: "A massive cyberattack on infrastructure." },
+  { en: "generative AI", ja: "生成AI", topic: "tech", ex: "Generative AI is reshaping industries." },
+  { en: "semiconductor", ja: "半導体", topic: "tech", ex: "Semiconductor supply chains tightened." },
+  { en: "regulation", ja: "規制", topic: "tech", ex: "Tougher regulation on social media." },
+  { en: "outbreak", ja: "発生・流行", topic: "health", ex: "An outbreak of avian flu." },
+  { en: "pandemic", ja: "パンデミック", topic: "health", ex: "Lessons from the pandemic." },
+  { en: "vaccine rollout", ja: "ワクチン展開", topic: "health", ex: "The vaccine rollout has accelerated." },
+  { en: "depreciation", ja: "（通貨）下落", topic: "economy", ex: "The yen's sharp depreciation." },
+  { en: "appreciation", ja: "（通貨）上昇", topic: "economy", ex: "Yen appreciation pressured exporters." },
+  { en: "hike", ja: "（金利・税）引き上げ", topic: "economy", ex: "A surprise rate hike by the Fed." },
+  { en: "anti-trust", ja: "独占禁止", topic: "economy", ex: "An anti-trust probe was launched." },
+  { en: "whistleblower", ja: "内部告発者", topic: "legal", ex: "A whistleblower exposed the fraud." },
+  { en: "scrutiny", ja: "精査・厳しい目", topic: "general", ex: "Under intense scrutiny from regulators." },
+  { en: "endorse", ja: "支持する・是認する", topic: "politics", ex: "The senator endorsed the candidate." },
+  { en: "reshuffle", ja: "（内閣）改造", topic: "politics", ex: "A cabinet reshuffle is expected." },
+];
+
+const PHRASES = [
+  { en: "in the wake of", ja: "～を受けて・～の余波で", ex: "In the wake of the disaster, aid poured in." },
+  { en: "at the helm of", ja: "～のトップに立って・指揮を執って", ex: "She is now at the helm of the agency." },
+  { en: "on the heels of", ja: "～の直後に", ex: "On the heels of the rate decision, stocks rallied." },
+  { en: "amid growing concerns", ja: "懸念が高まる中で", ex: "Amid growing concerns over inflation..." },
+  { en: "against the backdrop of", ja: "～を背景に", ex: "Against the backdrop of war, prices surged." },
+  { en: "in a bid to", ja: "～しようとして", ex: "In a bid to ease tensions, the envoy visited." },
+  { en: "come under fire", ja: "批判を浴びる", ex: "The minister came under fire for the remark." },
+  { en: "pave the way for", ja: "～への道を開く", ex: "The ruling paves the way for reform." },
+  { en: "weigh in on", ja: "～について発言する・意見を述べる", ex: "The president weighed in on the dispute." },
+  { en: "gain traction", ja: "勢いを増す・支持を得る", ex: "The proposal is gaining traction." },
+  { en: "step up efforts", ja: "取り組みを強化する", ex: "Authorities will step up efforts to contain it." },
+  { en: "mark a turning point", ja: "転換点となる", ex: "The vote marks a turning point in the campaign." },
+  { en: "tip the scales", ja: "形勢を一変させる", ex: "Younger voters could tip the scales." },
+  { en: "raise eyebrows", ja: "驚きを呼ぶ・物議を醸す", ex: "His comments raised eyebrows in Washington." },
+  { en: "fall short of", ja: "～に届かない", ex: "Growth fell short of expectations." },
+  { en: "come to a head", ja: "山場を迎える", ex: "The crisis came to a head this week." },
+  { en: "draw criticism", ja: "批判を招く", ex: "The decision drew criticism from allies." },
+  { en: "in the throes of", ja: "～のさなかに・苦境にあって", ex: "A nation in the throes of upheaval." },
+  { en: "set the stage for", ja: "～の舞台を整える", ex: "The talks set the stage for a summit." },
+  { en: "be poised to", ja: "今にも～しようとしている", ex: "The central bank is poised to act." },
+  { en: "be at odds with", ja: "～と対立している", ex: "The ruling is at odds with EU law." },
+  { en: "make headway", ja: "進展する", ex: "Negotiators are making headway." },
+  { en: "by a wide margin", ja: "大差で", ex: "Approved by a wide margin." },
+  { en: "narrowly avoid", ja: "辛うじて回避する", ex: "The country narrowly avoided default." },
+  { en: "in stark contrast", ja: "対照的に", ex: "In stark contrast to last year..." },
+  { en: "take center stage", ja: "主役になる・注目を集める", ex: "Climate took center stage at the summit." },
+  { en: "bear the brunt of", ja: "～の矢面に立つ・最も大きな打撃を受ける", ex: "Small firms bear the brunt of the slump." },
+  { en: "shed light on", ja: "～を明らかにする", ex: "The report sheds light on the cause." },
+  { en: "in light of", ja: "～を踏まえて", ex: "In light of recent events, plans changed." },
+  { en: "give the green light", ja: "ゴーサインを出す", ex: "The board gave the green light." },
+  { en: "break the deadlock", ja: "膠着状態を打破する", ex: "Talks aimed at breaking the deadlock." },
+  { en: "across the board", ja: "全般的に・一律に", ex: "Wages rose across the board." },
+];
+
+// Cloze-style current events (fill in the blank)
+const CURRENT = [
+  {
+    text: "The central bank decided to ___ interest rates for the third consecutive meeting, citing persistent inflation.",
+    answer: "hike",
+    options: ["hike", "abolish", "abstain", "ratify"],
+    ja: "中央銀行はインフレ持続を理由に、3会合連続で金利を引き上げた。", topic: "economy"
+  },
+  {
+    text: "Diplomats are pushing for a ___ to allow humanitarian aid to reach civilians.",
+    answer: "ceasefire",
+    options: ["ceasefire", "subsidy", "tariff", "moratorium"],
+    ja: "外交官たちは人道支援が市民に届くよう停戦を求めている。", topic: "politics"
+  },
+  {
+    text: "The summit was held against the ___ of rising geopolitical tensions in the region.",
+    answer: "backdrop",
+    options: ["backdrop", "deadline", "stipulation", "reshuffle"],
+    ja: "首脳会談は地域の地政学的緊張の高まりを背景に開催された。", topic: "international"
+  },
+  {
+    text: "The company came under ___ after whistleblowers exposed accounting irregularities.",
+    answer: "fire",
+    options: ["fire", "review", "way", "scrutiny"],
+    ja: "内部告発者が会計不正を明らかにし、同社は批判を浴びた。 (came under fire)", topic: "economy"
+  },
+  {
+    text: "Authorities issued an ___ order as wildfires approached residential areas.",
+    answer: "evacuation",
+    options: ["evacuation", "indictment", "incursion", "endorsement"],
+    ja: "山火事が住宅地に迫り、当局は避難命令を出した。", topic: "disaster"
+  },
+  {
+    text: "The new climate pact aims to achieve carbon ___ by mid-century.",
+    answer: "neutrality",
+    options: ["neutrality", "deficit", "surplus", "recession"],
+    ja: "新たな気候協定は今世紀半ばまでのカーボンニュートラル達成を目指す。", topic: "climate" },
+  {
+    text: "The bill passed by a wide ___, despite opposition from minor parties.",
+    answer: "margin",
+    options: ["margin", "headway", "threshold", "bracket"],
+    ja: "少数政党の反対にもかかわらず、法案は大差で可決された。", topic: "politics"
+  },
+  {
+    text: "A ___ probe was launched into the tech giant's market practices.",
+    answer: "anti-trust",
+    options: ["anti-trust", "pandemic", "bilateral", "humanitarian"],
+    ja: "巨大IT企業の市場慣行をめぐり、独禁法調査が始まった。", topic: "tech"
+  },
+  {
+    text: "The yen's sharp ___ has weighed heavily on import-reliant industries.",
+    answer: "depreciation",
+    options: ["depreciation", "appreciation", "ratification", "subpoena"],
+    ja: "円の急落は輸入依存業界に大きな打撃を与えている。", topic: "economy"
+  },
+  {
+    text: "Lawmakers will ___ the treaty next month after months of debate.",
+    answer: "ratify",
+    options: ["ratify", "exacerbate", "abstain", "endorse"],
+    ja: "議員らは数カ月の議論を経て、来月条約を批准する。", topic: "politics"
+  },
+  {
+    text: "The earthquake, with a ___ of 7.4, caused widespread damage along the coast.",
+    answer: "magnitude",
+    options: ["magnitude", "casualty", "drought", "outbreak"],
+    ja: "マグニチュード7.4の地震が沿岸部に広範な被害をもたらした。", topic: "disaster"
+  },
+  {
+    text: "The proposal is gaining ___ among younger voters across the country.",
+    answer: "traction",
+    options: ["traction", "scrutiny", "indictment", "headway"],
+    ja: "その提案は全国の若年層の間で支持を広げている。", topic: "politics"
+  },
+  {
+    text: "The ruling sets a ___ for similar cases in the years ahead.",
+    answer: "precedent",
+    options: ["precedent", "referendum", "moratorium", "coalition"],
+    ja: "この判決は今後の同種の事例の前例となる。", topic: "legal"
+  },
+  {
+    text: "An ___ of avian flu prompted the cull of millions of chickens.",
+    answer: "outbreak",
+    options: ["outbreak", "incursion", "endorsement", "appreciation"],
+    ja: "鳥インフルエンザの発生で数百万羽のニワトリが殺処分された。", topic: "health"
+  },
+  {
+    text: "The talks set the ___ for a long-awaited summit between the two leaders.",
+    answer: "stage",
+    options: ["stage", "table", "agenda", "scene"],
+    ja: "会談は両首脳の待望の首脳会議の舞台を整えた。 (set the stage)", topic: "international"
+  },
+];
+
+// Sight translation chunks (chunked Japanese vs natural English rendering)
+const SIGHT = [
+  { ja: "首相は本日、内閣改造を行うと発表した。", en: "The prime minister announced today that he will reshuffle the Cabinet." },
+  { ja: "中央銀行は予想に反して利上げを見送った。", en: "The central bank unexpectedly held off on raising rates." },
+  { ja: "両首脳は来月、東京で会談する予定だ。", en: "The two leaders are scheduled to meet in Tokyo next month." },
+  { ja: "停戦合意は数時間で崩れた。", en: "The ceasefire collapsed within hours." },
+  { ja: "失業率は2年ぶりの低水準に改善した。", en: "Unemployment fell to a two-year low." },
+  { ja: "犠牲者の数は今後さらに増える恐れがある。", en: "The death toll is feared to rise further." },
+  { ja: "政府は補正予算の編成に着手した。", en: "The government has begun drafting a supplementary budget." },
+  { ja: "条約は満場一致で批准された。", en: "The treaty was ratified unanimously." },
+  { ja: "首相は来週、訪米する見通しだ。", en: "The prime minister is expected to visit the United States next week." },
+  { ja: "議会は法案を賛成多数で可決した。", en: "Parliament passed the bill by a majority vote." },
+  { ja: "規制当局は調査に乗り出した。", en: "Regulators have launched a probe." },
+  { ja: "地震の影響で交通網が麻痺している。", en: "The earthquake has paralyzed the transport network." },
+  { ja: "市場は政策決定を好感した。", en: "Markets welcomed the policy decision." },
+  { ja: "外相は強い遺憾の意を表明した。", en: "The foreign minister voiced deep regret." },
+  { ja: "原油価格は3年ぶりの高値をつけた。", en: "Crude oil prices hit a three-year high." },
+  { ja: "国民投票の結果は僅差だった。", en: "The referendum result was razor-thin." },
+  { ja: "供給網の混乱は長期化の様相を呈している。", en: "Supply chain disruptions appear set to persist." },
+  { ja: "雇用統計は予想を上回った。", en: "Jobs data beat expectations." },
+];
+
+/* ============================================================================
+   GAME STATE & UTILS
+============================================================================ */
+
+const SCREEN = document.getElementById('screen');
+const stHigh = document.getElementById('stHigh');
+const stStreak = document.getElementById('stStreak');
+
+const STORAGE_KEY = 'bit_v1_stats';
+function loadStats() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || { high: 0, bestStreak: 0, byCat: {} }; }
+  catch { return { high: 0, bestStreak: 0, byCat: {} }; }
+}
+function saveStats(s) { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }
+let stats = loadStats();
+function refreshHeader() {
+  stHigh.textContent = stats.high || 0;
+  stStreak.firstChild.nodeValue = (stats.bestStreak || 0).toString();
+  document.getElementById('streakFlame').textContent = (stats.bestStreak || 0) >= 5 ? ' 🔥' : '';
+}
+refreshHeader();
+
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function pick(arr, n) { return shuffle([...arr]).slice(0, n); }
+function rand(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+const TOPIC_LABEL = {
+  politics: "政治", economy: "経済", climate: "気候", disaster: "災害",
+  international: "国際", tech: "テック", health: "医療", legal: "法律", general: "一般",
+};
+
+/* ============================================================================
+   QUESTION GENERATORS
+============================================================================ */
+
+// Vocabulary: EN -> JA or JA -> EN multiple choice
+function genVocabQ(direction /* 'en2ja' | 'ja2en' | 'mix' */) {
+  const dir = direction === 'mix' ? (Math.random() < 0.5 ? 'en2ja' : 'ja2en') : direction;
+  const item = rand(VOCAB);
+  const distractors = pick(VOCAB.filter(v => v.en !== item.en), 3);
+  const opts = shuffle([item, ...distractors]);
+  if (dir === 'en2ja') {
+    return {
+      prompt: item.en,
+      promptIsEn: true,
+      hint: `${TOPIC_LABEL[item.topic] || item.topic} · 意味として最も適切なものは？`,
+      topic: item.topic,
+      options: opts.map(o => o.ja),
+      answer: item.ja,
+      explanation: `${item.en} = ${item.ja}`,
+      example: item.ex,
+    };
+  }
+  return {
+    prompt: item.ja,
+    promptIsEn: false,
+    hint: `${TOPIC_LABEL[item.topic] || item.topic} · 英訳として最も適切なものは？`,
+    topic: item.topic,
+    options: opts.map(o => o.en),
+    answer: item.en,
+    explanation: `${item.ja} = ${item.en}`,
+    example: item.ex,
+  };
+}
+
+// Phrases: EN phrase -> JA meaning
+function genPhraseQ(direction) {
+  const dir = direction === 'mix' ? (Math.random() < 0.5 ? 'en2ja' : 'ja2en') : direction;
+  const item = rand(PHRASES);
+  const distractors = pick(PHRASES.filter(p => p.en !== item.en), 3);
+  const opts = shuffle([item, ...distractors]);
+  if (dir === 'en2ja') {
+    return {
+      prompt: item.en,
+      promptIsEn: true,
+      hint: `定型表現の意味は？`,
+      options: opts.map(o => o.ja),
+      answer: item.ja,
+      explanation: `${item.en} → ${item.ja}`,
+      example: item.ex,
+    };
+  }
+  return {
+    prompt: item.ja,
+    promptIsEn: false,
+    hint: `この意味になる英語表現は？`,
+    options: opts.map(o => o.en),
+    answer: item.en,
+    explanation: `${item.ja} → ${item.en}`,
+    example: item.ex,
+  };
+}
+
+// Current events: cloze
+function genCurrentQ() {
+  const item = rand(CURRENT);
+  const display = item.text.replace('___', '_____');
+  return {
+    prompt: display,
+    promptIsEn: true,
+    hint: `${TOPIC_LABEL[item.topic] || item.topic} · 空欄に入る語は？`,
+    topic: item.topic,
+    options: shuffle([...item.options]),
+    answer: item.answer,
+    explanation: item.text.replace('___', `[${item.answer}]`),
+    example: `参考訳: ${item.ja}`,
+  };
+}
+
+// Numbers: 万/億/兆 conversion - critical for interpreters
+function genNumberQ() {
+  const dir = Math.random() < 0.5 ? 'ja2en' : 'en2ja';
+  // generate a base number 1..9999 and a Japanese unit
+  const units = [
+    { ja: '万', factor: 1e4, en: 'ten thousand' },
+    { ja: '億', factor: 1e8, en: 'hundred million' },
+    { ja: '兆', factor: 1e12, en: 'trillion' },
+  ];
+  const u = rand(units);
+  const num = Math.floor(Math.random() * 999) + 1;
+  const total = num * u.factor;
+
+  // Build EN form (compact: 99 million / 1.5 billion etc)
+  const en = formatEnNumber(total);
+  const ja = `${num.toLocaleString('ja-JP')}${u.ja}`;
+
+  // Generate distractors by perturbing number
+  const distract = new Set();
+  while (distract.size < 3) {
+    const perturb = Math.random() < 0.5
+      ? num * (Math.random() < 0.5 ? 10 : 0.1)
+      : (Math.floor(Math.random() * 999) + 1);
+    const tNum = Math.max(1, Math.round(perturb));
+    if (tNum === num) continue;
+    if (dir === 'ja2en') {
+      const totVal = tNum * u.factor;
+      distract.add(formatEnNumber(totVal));
+    } else {
+      // alter unit too sometimes
+      const altU = Math.random() < 0.4 ? rand(units.filter(x => x.ja !== u.ja)) : u;
+      distract.add(`${tNum.toLocaleString('ja-JP')}${altU.ja}`);
+    }
+  }
+
+  if (dir === 'ja2en') {
+    return {
+      prompt: ja,
+      promptIsEn: false,
+      hint: `数字を英語に。通訳で頻出。`,
+      options: shuffle([en, ...distract]),
+      answer: en,
+      explanation: `${ja} = ${en} (${total.toLocaleString('en-US')})`,
+      example: `桁の換算: 1万=10,000 / 1億=100 million / 1兆=1 trillion`,
+    };
+  }
+  return {
+    prompt: en,
+    promptIsEn: true,
+    hint: `英語の数字を日本語の単位（万・億・兆）に。`,
+    options: shuffle([ja, ...distract]),
+    answer: ja,
+    explanation: `${en} = ${ja} (${total.toLocaleString('en-US')})`,
+    example: `桁の換算: 1万=10,000 / 1億=100 million / 1兆=1 trillion`,
+  };
+}
+
+function formatEnNumber(n) {
+  // Express in trillion / billion / million / thousand
+  const abs = Math.abs(n);
+  let val, unit;
+  if (abs >= 1e12) { val = n / 1e12; unit = 'trillion'; }
+  else if (abs >= 1e9) { val = n / 1e9; unit = 'billion'; }
+  else if (abs >= 1e6) { val = n / 1e6; unit = 'million'; }
+  else if (abs >= 1e3) { val = n / 1e3; unit = 'thousand'; }
+  else return n.toLocaleString('en-US');
+  // Format: drop trailing zeros, keep up to 3 sig
+  let s = (Math.round(val * 1000) / 1000).toString();
+  return `${s} ${unit}`;
+}
+
+// Sight translation: pick best EN rendering for given JA (or vice versa)
+function genSightQ() {
+  const dir = Math.random() < 0.5 ? 'ja2en' : 'en2ja';
+  const item = rand(SIGHT);
+  const distractors = pick(SIGHT.filter(s => s.en !== item.en), 3);
+  if (dir === 'ja2en') {
+    return {
+      prompt: item.ja,
+      promptIsEn: false,
+      hint: `自然な放送英語として最も適切な訳は？`,
+      options: shuffle([item.en, ...distractors.map(d => d.en)]),
+      answer: item.en,
+      explanation: `参考: ${item.ja} → ${item.en}`,
+      example: '',
+    };
+  }
+  return {
+    prompt: item.en,
+    promptIsEn: true,
+    hint: `この英文に対応する自然な日本語は？`,
+    options: shuffle([item.ja, ...distractors.map(d => d.ja)]),
+    answer: item.ja,
+    explanation: `参考: ${item.en} → ${item.ja}`,
+    example: '',
+  };
+}
+
+const CATEGORIES = {
+  vocab:   { title: '語彙 / Vocabulary',     desc: '時事英単語の双方向確認。トピック別。', ic: '🗞️', tag: 'CORE',   gen: genVocabQ,   wantsDir: true },
+  phrase:  { title: 'フレーズ / Phrases',    desc: '放送英語に頻出する定型表現・慣用句。',    ic: '💬', tag: 'IDIOM',  gen: genPhraseQ,  wantsDir: true },
+  current: { title: '時事 / Current Events', desc: 'ニュース文の空所補充で文脈ごと習得。',    ic: '📰', tag: 'CLOZE',  gen: genCurrentQ, wantsDir: false },
+  number:  { title: '数字 / Numbers',        desc: '万・億・兆 ↔ million / billion / trillion。', ic: '🔢', tag: 'DRILL',  gen: genNumberQ,  wantsDir: false },
+  sight:   { title: 'サイトラ / Sight Tr.',  desc: '日↔英、自然な放送訳の選択トレーニング。',  ic: '🎙️', tag: 'CHUNK',  gen: genSightQ,   wantsDir: false },
+};
+
+/* ============================================================================
+   SCREENS
+============================================================================ */
+
+function renderHome() {
+  SCREEN.innerHTML = `
+    <section class="hero">
+      <h2>カテゴリーを選択</h2>
+      <p>放送通訳・NHK レベルを想定した英語学習ゲーム。各カテゴリーは10問。スピード重視で、即時の意味理解を鍛えます。</p>
+    </section>
+    <div class="grid">
+      ${Object.entries(CATEGORIES).map(([key, c]) => `
+        <div class="card" data-cat="${key}">
+          <span class="tag">${c.tag}</span>
+          <div class="ic">${c.ic}</div>
+          <h3>${c.title}</h3>
+          <p>${c.desc}</p>
+        </div>
+      `).join('')}
+    </div>
+    <div class="options-row">
+      <label>出題数
+        <select id="optCount">
+          <option value="10" selected>10問</option>
+          <option value="20">20問</option>
+          <option value="30">30問</option>
+        </select>
+      </label>
+      <label>方向（語彙・フレーズ）
+        <select id="optDir">
+          <option value="mix" selected>ミックス</option>
+          <option value="en2ja">英 → 日</option>
+          <option value="ja2en">日 → 英</option>
+        </select>
+      </label>
+      <label>制限時間
+        <select id="optTime">
+          <option value="0">なし</option>
+          <option value="15" selected>15秒</option>
+          <option value="10">10秒（速報モード）</option>
+          <option value="7">7秒（同通モード）</option>
+        </select>
+      </label>
+      <label><input type="checkbox" id="optTTS"> 英語の自動読み上げ</label>
+    </div>
+  `;
+  document.querySelectorAll('.card').forEach(el => {
+    el.addEventListener('click', () => {
+      const cat = el.dataset.cat;
+      const count = parseInt(document.getElementById('optCount').value, 10);
+      const dir = document.getElementById('optDir').value;
+      const time = parseInt(document.getElementById('optTime').value, 10);
+      const tts = document.getElementById('optTTS').checked;
+      startQuiz(cat, { count, dir, time, tts });
+    });
+  });
+}
+
+let quiz = null;
+
+function startQuiz(cat, opts) {
+  const conf = CATEGORIES[cat];
+  const questions = [];
+  for (let i = 0; i < opts.count; i++) {
+    const q = conf.wantsDir ? conf.gen(opts.dir) : conf.gen();
+    questions.push(q);
+  }
+  quiz = {
+    cat, conf, opts, questions,
+    idx: 0, correct: 0, streakNow: 0, streakBest: 0,
+    answers: [], timer: null, deadline: null, locked: false,
+  };
+  renderQuestion();
+}
+
+function renderQuestion() {
+  const q = quiz.questions[quiz.idx];
+  quiz.locked = false;
+  const total = quiz.questions.length;
+  const pct = (quiz.idx / total) * 100;
+
+  SCREEN.innerHTML = `
+    <div class="quiz">
+      <div class="qhead">
+        <span>${quiz.conf.title}</span>
+        <span>問題 ${quiz.idx + 1} / ${total} · ストリーク ${quiz.streakNow}</span>
+      </div>
+      <div class="progress"><div style="width:${pct}%"></div></div>
+      ${quiz.opts.time > 0 ? `<div class="timer-bar" id="timerBar"><div></div></div>` : ''}
+      <div class="qprompt" id="qprompt">${q.prompt}${q.promptIsEn ? '<button class="speak-btn" id="speakBtn" title="読み上げ">🔊</button>' : ''}</div>
+      <div class="qhint">
+        ${q.topic ? `<span class="topic">${TOPIC_LABEL[q.topic] || q.topic}</span>` : ''}
+        ${q.hint || ''}
+      </div>
+      <div class="opts" id="opts">
+        ${q.options.map((opt, i) => `
+          <button class="opt" data-i="${i}">
+            <span class="key">${i + 1}</span>
+            <span>${opt}</span>
+          </button>
+        `).join('')}
+      </div>
+      <div id="feedback"></div>
+      <div class="qfooter">
+        <button class="btn ghost" id="quitBtn">中断して戻る</button>
+        <div></div>
+      </div>
+    </div>
+  `;
+
+  document.querySelectorAll('.opt').forEach(b => {
+    b.addEventListener('click', () => answer(parseInt(b.dataset.i, 10)));
+  });
+  document.getElementById('quitBtn').addEventListener('click', () => {
+    if (quiz.timer) clearInterval(quiz.timer);
+    renderHome();
+  });
+  const sb = document.getElementById('speakBtn');
+  if (sb) sb.addEventListener('click', () => speak(q.prompt));
+
+  // Keyboard
+  document.onkeydown = (e) => {
+    if (quiz.locked) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); next(); }
+      return;
+    }
+    const n = parseInt(e.key, 10);
+    if (n >= 1 && n <= q.options.length) answer(n - 1);
+  };
+
+  if (quiz.opts.tts && q.promptIsEn) speak(q.prompt);
+
+  if (quiz.opts.time > 0) startTimer(quiz.opts.time);
+}
+
+function startTimer(seconds) {
+  const bar = document.querySelector('#timerBar > div');
+  const wrap = document.getElementById('timerBar');
+  const start = Date.now();
+  const ms = seconds * 1000;
+  quiz.deadline = start + ms;
+  if (quiz.timer) clearInterval(quiz.timer);
+  quiz.timer = setInterval(() => {
+    const left = quiz.deadline - Date.now();
+    const pct = Math.max(0, (left / ms) * 100);
+    if (bar) bar.style.width = pct + '%';
+    if (wrap) wrap.classList.toggle('danger', left < ms * 0.3);
+    if (left <= 0) {
+      clearInterval(quiz.timer);
+      if (!quiz.locked) answer(-1); // timeout
+    }
+  }, 80);
+}
+
+function answer(idx) {
+  if (quiz.locked) return;
+  quiz.locked = true;
+  if (quiz.timer) clearInterval(quiz.timer);
+
+  const q = quiz.questions[quiz.idx];
+  const buttons = [...document.querySelectorAll('.opt')];
+  const correctIdx = q.options.indexOf(q.answer);
+  const isCorrect = idx === correctIdx;
+  const isTimeout = idx === -1;
+
+  buttons.forEach((b, i) => {
+    b.disabled = true;
+    if (i === correctIdx) b.classList.add('correct');
+    if (i === idx && !isCorrect) b.classList.add('wrong');
+  });
+
+  if (isCorrect) {
+    quiz.correct++;
+    quiz.streakNow++;
+    if (quiz.streakNow > quiz.streakBest) quiz.streakBest = quiz.streakNow;
+  } else {
+    quiz.streakNow = 0;
+  }
+
+  quiz.answers.push({
+    q: q.prompt, picked: idx === -1 ? '(時間切れ)' : q.options[idx],
+    answer: q.answer, ok: isCorrect, explanation: q.explanation, example: q.example,
+  });
+
+  const fb = document.getElementById('feedback');
+  fb.innerHTML = `
+    <div class="feedback ${isCorrect ? 'ok' : 'ng'}">
+      <strong>${isCorrect ? '✓ 正解' : isTimeout ? '⌛ 時間切れ' : '✗ 不正解'}</strong>
+      ${q.explanation ? `<div>${q.explanation}</div>` : ''}
+      ${q.example ? `<div class="ex">例: ${q.example}</div>` : ''}
+    </div>
+    <div class="qfooter" style="margin-top:14px;">
+      <button class="btn ghost" id="quitBtn2">中断</button>
+      <button class="btn" id="nextBtn">${quiz.idx + 1 >= quiz.questions.length ? '結果を見る' : '次へ (Enter)'}</button>
+    </div>
+  `;
+  document.getElementById('nextBtn').addEventListener('click', next);
+  document.getElementById('quitBtn2').addEventListener('click', () => {
+    document.onkeydown = null;
+    renderHome();
+  });
+}
+
+function next() {
+  quiz.idx++;
+  if (quiz.idx >= quiz.questions.length) renderResult();
+  else renderQuestion();
+}
+
+function renderResult() {
+  document.onkeydown = null;
+  const total = quiz.questions.length;
+  const pct = Math.round((quiz.correct / total) * 100);
+  const score = quiz.correct * 100 + quiz.streakBest * 20;
+
+  // Persist
+  if (score > (stats.high || 0)) stats.high = score;
+  if (quiz.streakBest > (stats.bestStreak || 0)) stats.bestStreak = quiz.streakBest;
+  stats.byCat = stats.byCat || {};
+  stats.byCat[quiz.cat] = stats.byCat[quiz.cat] || { played: 0, correct: 0, total: 0 };
+  stats.byCat[quiz.cat].played++;
+  stats.byCat[quiz.cat].correct += quiz.correct;
+  stats.byCat[quiz.cat].total += total;
+  saveStats(stats);
+  refreshHeader();
+
+  let comment;
+  if (pct === 100) comment = '完璧。同通卓に座れます。';
+  else if (pct >= 90) comment = '放送水準。引き続き語彙の幅を広げましょう。';
+  else if (pct >= 75) comment = '実用域。瞬発力を上げると本番で効きます。';
+  else if (pct >= 50) comment = '基礎は固め中。トピック別に弱点を絞りましょう。';
+  else comment = 'まずは語彙とフレーズの定着から。例文ごと音読推奨。';
+
+  SCREEN.innerHTML = `
+    <div class="result">
+      <h2>${quiz.conf.title}</h2>
+      <div class="score">${pct}%</div>
+      <div style="color:var(--sub); font-size:14px;">${comment}</div>
+      <div class="breakdown">
+        <div class="b"><div class="v">${quiz.correct}/${total}</div><div class="l">Correct</div></div>
+        <div class="b"><div class="v">${quiz.streakBest}</div><div class="l">Best Streak</div></div>
+        <div class="b"><div class="v">${score}</div><div class="l">Score</div></div>
+      </div>
+      <div class="actions">
+        <button class="btn" id="retryBtn">同じカテゴリーをもう一度</button>
+        <button class="btn ghost" id="homeBtn">カテゴリー選択へ</button>
+      </div>
+      <div class="review">
+        <h4>復習 — 出題と解答</h4>
+        ${quiz.answers.map(a => `
+          <div class="item ${a.ok ? 'ok' : 'ng'}">
+            <div class="q">${a.q}</div>
+            <div class="a">正解: <strong>${a.answer}</strong>${!a.ok ? ` ／ あなたの解答: ${a.picked}` : ''}${a.example ? `<br>${a.example}` : ''}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  document.getElementById('retryBtn').addEventListener('click', () => startQuiz(quiz.cat, quiz.opts));
+  document.getElementById('homeBtn').addEventListener('click', renderHome);
+}
+
+/* ============================================================================
+   TTS (Web Speech API)
+============================================================================ */
+function speak(text) {
+  if (!('speechSynthesis' in window)) return;
+  // Strip any HTML markers (e.g. underscores stay)
+  const utt = new SpeechSynthesisUtterance(text.replace(/_____/g, 'blank'));
+  utt.lang = 'en-US';
+  utt.rate = 1.0;
+  utt.pitch = 1.0;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(utt);
+}
+
+renderHome();
+</script>
+</body>
+</html>
