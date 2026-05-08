@@ -681,9 +681,10 @@ function renderHome() {
     <div class="options-row">
       <label>出題数
         <select id="optCount">
-          <option value="10" selected>10問</option>
-          <option value="20">20問</option>
-          <option value="30">30問</option>
+          <option value="20" selected>20問</option>
+          <option value="50">50問</option>
+          <option value="100">100問</option>
+          <option value="0">エンドレス</option>
         </select>
       </label>
       <label>方向（語彙・フレーズ）
@@ -720,32 +721,45 @@ let quiz = null;
 
 function startQuiz(cat, opts) {
   const conf = CATEGORIES[cat];
-  const questions = [];
-  for (let i = 0; i < opts.count; i++) {
-    const q = conf.wantsDir ? conf.gen(opts.dir) : conf.gen();
-    questions.push(q);
-  }
+  const endless = opts.count === 0;
   quiz = {
-    cat, conf, opts, questions,
+    cat, conf, opts, endless,
+    questions: [],
     idx: 0, correct: 0, streakNow: 0, streakBest: 0,
     answers: [], timer: null, deadline: null, locked: false,
+    recent: [],
   };
+  const initialCount = endless ? 1 : opts.count;
+  for (let i = 0; i < initialCount; i++) quiz.questions.push(buildQuestion());
   renderQuestion();
+}
+
+// Build a question while avoiding recently used prompts (reduces in-session repetition)
+function buildQuestion() {
+  const gen = quiz.conf.wantsDir ? () => quiz.conf.gen(quiz.opts.dir) : quiz.conf.gen;
+  let q;
+  for (let attempt = 0; attempt < 10; attempt++) {
+    q = gen();
+    if (!quiz.recent.includes(q.prompt)) break;
+  }
+  quiz.recent.push(q.prompt);
+  if (quiz.recent.length > 25) quiz.recent.shift();
+  return q;
 }
 
 function renderQuestion() {
   const q = quiz.questions[quiz.idx];
   quiz.locked = false;
-  const total = quiz.questions.length;
-  const pct = (quiz.idx / total) * 100;
+  const total = quiz.endless ? '∞' : quiz.questions.length;
+  const pct = quiz.endless ? 0 : (quiz.idx / quiz.questions.length) * 100;
 
   SCREEN.innerHTML = `
     <div class="quiz">
       <div class="qhead">
-        <span>${quiz.conf.title}</span>
-        <span>問題 ${quiz.idx + 1} / ${total} · ストリーク ${quiz.streakNow}</span>
+        <span>${quiz.conf.title}${quiz.endless ? ' · エンドレス' : ''}</span>
+        <span>問題 ${quiz.idx + 1}${quiz.endless ? '' : ' / ' + total} · 正答 ${quiz.correct} · ストリーク ${quiz.streakNow}</span>
       </div>
-      <div class="progress"><div style="width:${pct}%"></div></div>
+      ${quiz.endless ? '' : `<div class="progress"><div style="width:${pct}%"></div></div>`}
       ${quiz.opts.time > 0 ? `<div class="timer-bar" id="timerBar"><div></div></div>` : ''}
       <div class="qprompt" id="qprompt">${q.prompt}${q.promptIsEn ? '<button class="speak-btn" id="speakBtn" title="読み上げ">🔊</button>' : ''}</div>
       <div class="qhint">
@@ -850,26 +864,33 @@ function answer(idx) {
       ${q.example ? `<div class="ex">例: ${q.example}</div>` : ''}
     </div>
     <div class="qfooter" style="margin-top:14px;">
-      <button class="btn ghost" id="quitBtn2">中断</button>
-      <button class="btn" id="nextBtn">${quiz.idx + 1 >= quiz.questions.length ? '結果を見る' : '次へ (Enter)'}</button>
+      <button class="btn ghost" id="quitBtn2">${quiz.endless ? '終了して結果へ' : '結果を見て中断'}</button>
+      <button class="btn" id="nextBtn">${!quiz.endless && quiz.idx + 1 >= quiz.questions.length ? '結果を見る' : '次へ (Enter)'}</button>
     </div>
   `;
   document.getElementById('nextBtn').addEventListener('click', next);
   document.getElementById('quitBtn2').addEventListener('click', () => {
     document.onkeydown = null;
-    renderHome();
+    renderResult();
   });
 }
 
 function next() {
   quiz.idx++;
-  if (quiz.idx >= quiz.questions.length) renderResult();
-  else renderQuestion();
+  if (quiz.endless) {
+    quiz.questions.push(buildQuestion());
+    renderQuestion();
+  } else if (quiz.idx >= quiz.questions.length) {
+    renderResult();
+  } else {
+    renderQuestion();
+  }
 }
 
 function renderResult() {
   document.onkeydown = null;
-  const total = quiz.questions.length;
+  if (quiz.timer) clearInterval(quiz.timer);
+  const total = quiz.answers.length || 1;
   const pct = Math.round((quiz.correct / total) * 100);
   const score = quiz.correct * 100 + quiz.streakBest * 20;
 
